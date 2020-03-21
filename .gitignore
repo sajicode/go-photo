@@ -36,3 +36,24 @@ _testmain.go
 
 # mac hidden files
 .DS_Store
+
+# other
+node_nodules/
+bower_components/
+.tmp
+.sass-cache
+builds/**/images/*
+*.ogg
+
+#*.png
+#*.jpeg
+
+# security / ssl
+*.pem
+*.xxjson
+
+# Anything under a tmp folder
+**/tmp/*
+
+# Don't include our binary
+go-photo
