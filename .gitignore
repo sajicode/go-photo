@@ -54,6 +54,7 @@ builds/**/images/*
 
 # Anything under a tmp folder
 **/tmp/*
+tmp/
 
 # Don't include our binary
 go-photo
