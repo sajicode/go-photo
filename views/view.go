@@ -2,6 +2,7 @@ package views
 
 import (
 	"html/template"
+	"net/http"
 	"path/filepath"
 )
 
@@ -29,6 +30,11 @@ func NewView(layout string, files ...string) *View {
 type View struct {
 	Template *template.Template
 	Layout   string
+}
+
+// Render function helps with rendering view with pre-defined layout
+func (v *View) Render(w http.ResponseWriter, data interface{}) error {
+	return v.Template.ExecuteTemplate(w, v.Layout, data)
 }
 
 // returns a slice of strings repping files within layout direction
