@@ -5,8 +5,6 @@ import (
 	"net/http"
 
 	"github.com/sajicode/go-photo/views"
-
-	"github.com/gorilla/schema"
 )
 
 // NewUsers is used to create a new user controller. should only be used at setup
@@ -38,13 +36,8 @@ func (u *Users) New(w http.ResponseWriter, r *http.Request) {
 // Create a new user
 // POST /signup
 func (u *Users) Create(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseForm(); err != nil {
-		panic(err)
-	}
-
-	dec := schema.NewDecoder()
 	var form SignupForm
-	if err := dec.Decode(&form, r.PostForm); err != nil {
+	if err := parseForm(r, &form); err != nil {
 		panic(err)
 	}
 	fmt.Fprintln(w, form)
