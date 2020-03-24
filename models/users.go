@@ -17,8 +17,8 @@ var (
 )
 
 // NewUserService DB connection
-func NewUserService(connectionInfo string) (*UserService, error) {
-	db, err := gorm.Open("postgres", connectionInfo)
+func NewUserService(dbDriver, connectionInfo string) (*UserService, error) {
+	db, err := gorm.Open(dbDriver, connectionInfo)
 	if err != nil {
 		return nil, err
 	}
@@ -39,6 +39,7 @@ func (us *UserService) ByID(id uint) (*User, error) {
 	var user User
 	db := us.db.Where("id = ?", id)
 	err := first(db, &user)
+	return &user, err
 }
 
 // ByEmail returns a user object based on email
@@ -46,6 +47,7 @@ func (us *UserService) ByEmail(email string) (*User, error) {
 	var user User
 	db := us.db.Where("email = ?", email)
 	err := first(db, &user)
+	return &user, err
 }
 
 func first(db *gorm.DB, dst interface{}) error {
@@ -62,8 +64,8 @@ func (us *UserService) Create(user *User) error {
 }
 
 // Update will update the provided user with all of the data in the provided user object
-func (us *UserService) Update(user *User) {
-	return us.db.Save(user)
+func (us *UserService) Update(user *User) error {
+	return us.db.Save(user).Error
 }
 
 // Delete a database user
@@ -82,10 +84,19 @@ func (us *UserService) Close() error {
 }
 
 // DestructiveReset func to drop and recreate tables
-//! for dev purposes only
-func (us *UserService) DestructiveReset() {
-	us.db.DropTableIfExists(&User{})
-	us.db.AutoMigrate(&User{})
+func (us *UserService) DestructiveReset() error {
+	if err := us.db.DropTableIfExists(&User{}).Error; err != nil {
+		return err
+	}
+	return us.AutoMigrate()
+}
+
+// AutoMigrate creates tables in the db
+func (us *UserService) AutoMigrate() error {
+	if err := us.db.AutoMigrate(&User{}).Error; err != nil {
+		return err
+	}
+	return nil
 }
 
 // User struct
