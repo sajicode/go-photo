@@ -11,6 +11,9 @@ import (
 var (
 	// ErrNotFound is returned when a resource cannot be found in the DB
 	ErrNotFound = errors.New("models: resource not found")
+
+	// ErrInvalidID is returned when an Invalid ID is provided to a method like Delete
+	ErrInvalidID = errors.New("models: ID provided was invalid")
 )
 
 // NewUserService DB connection
@@ -34,20 +37,43 @@ type UserService struct {
 // 1 - user, nil, 2 - nil, ErrNotFound, 3 - nil, otherError
 func (us *UserService) ByID(id uint) (*User, error) {
 	var user User
-	err := us.db.Where("id = ?", id).First(&user).Error
-	switch err {
-	case nil:
-		return &user, nil
-	case gorm.ErrRecordNotFound:
-		return nil, ErrNotFound
-	default:
-		return nil, err
+	db := us.db.Where("id = ?", id)
+	err := first(db, &user)
+}
+
+// ByEmail returns a user object based on email
+func (us *UserService) ByEmail(email string) (*User, error) {
+	var user User
+	db := us.db.Where("email = ?", email)
+	err := first(db, &user)
+}
+
+func first(db *gorm.DB, dst interface{}) error {
+	err := db.First(dst).Error
+	if err == gorm.ErrRecordNotFound {
+		return ErrNotFound
 	}
+	return err
 }
 
 // Create will create the provided user data
 func (us *UserService) Create(user *User) error {
 	return us.db.Create(user).Error
+}
+
+// Update will update the provided user with all of the data in the provided user object
+func (us *UserService) Update(user *User) {
+	return us.db.Save(user)
+}
+
+// Delete a database user
+func (us *UserService) Delete(id uint) error {
+	// we are preventing data with id of 0 bcos gorm will delete all records if allowed
+	if id == 0 {
+		return ErrInvalidID
+	}
+	user := User{Model: gorm.Model{ID: id}}
+	return us.db.Delete(&user).Error
 }
 
 // Close DB connection
