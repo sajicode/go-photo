@@ -24,6 +24,8 @@ func main() {
 	must(err)
 
 	defer us.Close()
+	//! to clear db
+	// us.DestructiveReset()
 
 	us.AutoMigrate()
 
