@@ -11,15 +11,17 @@ import (
 // NewUsers is used to create a new user controller. should only be used at setup
 func NewUsers(us *models.UserService) *Users {
 	return &Users{
-		NewView: views.NewView("bootstrap", "users/new"),
-		us:      us,
+		NewView:   views.NewView("bootstrap", "users/new"),
+		LoginView: views.NewView("bootstrap", "users/login"),
+		us:        us,
 	}
 }
 
 // Users struct
 type Users struct {
-	NewView *views.View
-	us      *models.UserService
+	NewView   *views.View
+	LoginView *views.View
+	us        *models.UserService
 }
 
 // SignupForm struct
@@ -54,4 +56,20 @@ func (u *Users) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	fmt.Fprintln(w, user)
+}
+
+// LoginForm struct
+type LoginForm struct {
+	Email    string `schema:"email"`
+	Password string `schema:"password"`
+}
+
+// Login is used to verify a user's email & password
+// POST /login
+func (u *Users) Login(w http.ResponseWriter, r *http.Request) {
+	form := LoginForm{}
+	if err := parseForm(r, &form); err != nil {
+		panic(err)
+	}
+	fmt.Fprintln(w, form)
 }
