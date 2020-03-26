@@ -115,8 +115,9 @@ func (u *Users) signIn(w http.ResponseWriter, user *models.User) error {
 		}
 	}
 	cookie := http.Cookie{
-		Name:  "remember_token",
-		Value: user.Remember,
+		Name:     "remember_token",
+		Value:    user.Remember,
+		HttpOnly: true, //! remember to remove when we want to connect a frontend
 	}
 	http.SetCookie(w, &cookie)
 	return nil
