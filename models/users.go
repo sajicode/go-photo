@@ -2,6 +2,7 @@ package models
 
 import (
 	"errors"
+	"regexp"
 	"strings"
 
 	"github.com/jinzhu/gorm"
@@ -25,6 +26,18 @@ var (
 	// ErrInvalidPassword is returned when an invalid password
 	// is used when attempting to authenticate a user.
 	ErrInvalidPassword = errors.New("models: incorrect password provided")
+
+	// ErrEmailRequired is returned when an email address is
+	// not provided when creating a user
+	ErrEmailRequired = errors.New("models: email address is required")
+
+	// ErrEmailInvalid is returned when an email address provided
+	// does not match any of our requirements
+	ErrEmailInvalid = errors.New("models: email address is not valid")
+
+	// ErrEmailTaken is returned when an update or create is attempted
+	// with an email address that is already in use.
+	ErrEmailTaken = errors.New("models: email address is already taken")
 )
 
 const userPwPepper = "secret-random-string"
@@ -94,14 +107,9 @@ func NewUserService(dbDriver, connectionInfo string) (UserService, error) {
 		return nil, err
 	}
 	hmac := hash.NewHMAC(hmacSecretKey)
-	uv := &userValidator{
-		hmac:   hmac,
-		UserDB: ug,
-	}
+	uv := newUserValidator(ug, hmac)
 	return &userService{
-		UserDB: &userValidator{
-			UserDB: uv,
-		},
+		UserDB: uv,
 	}, nil
 }
 
@@ -154,9 +162,20 @@ func runUserValFuncs(user *User, fns ...userValFunc) error {
 var _ UserDB = &userValidator{}
 
 // * Validators
+
+// newUserValidator function
+func newUserValidator(udb UserDB, hmac hash.HMAC) *userValidator {
+	return &userValidator{
+		UserDB:     udb,
+		hmac:       hmac,
+		emailRegex: regexp.MustCompile(`^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,16}$`),
+	}
+}
+
 type userValidator struct {
 	UserDB
-	hmac hash.HMAC
+	hmac       hash.HMAC
+	emailRegex *regexp.Regexp
 }
 
 // ByEmail validator
@@ -187,7 +206,16 @@ func (uv *userValidator) ByRemember(token string) (*User, error) {
 func (uv *userValidator) Create(user *User) error {
 
 	// todo the order of function calls matter especially setRemember before hmacRemember. Read & understand Adams
-	if err := runUserValFuncs(user, uv.bcryptPassword, uv.setRememberIfUnset, uv.hmacRemember, uv.normalizeEmail); err != nil {
+	err := runUserValFuncs(
+		user,
+		uv.bcryptPassword,
+		uv.setRememberIfUnset,
+		uv.hmacRemember,
+		uv.normalizeEmail,
+		uv.requireEmail,
+		uv.emailFormat,
+		uv.emailIsAvail)
+	if err != nil {
 		return err
 	}
 	return uv.UserDB.Create(user)
@@ -195,7 +223,15 @@ func (uv *userValidator) Create(user *User) error {
 
 // Update will hash a remember token if it is provided.
 func (uv *userValidator) Update(user *User) error {
-	if err := runUserValFuncs(user, uv.bcryptPassword, uv.hmacRemember, uv.normalizeEmail); err != nil {
+	err := runUserValFuncs(
+		user,
+		uv.bcryptPassword,
+		uv.hmacRemember,
+		uv.normalizeEmail,
+		uv.requireEmail,
+		uv.emailFormat,
+		uv.emailIsAvail)
+	if err != nil {
 		return err
 	}
 	return uv.UserDB.Update(user)
@@ -266,6 +302,45 @@ func (uv *userValidator) normalizeEmail(user *User) error {
 	user.Email = strings.ToLower(user.Email)
 	user.Email = strings.TrimSpace(user.Email)
 	return nil
+}
+
+// requireEmail ensures the email field is passed in
+func (uv *userValidator) requireEmail(user *User) error {
+	if user.Email == "" {
+		return ErrEmailRequired
+	}
+	return nil
+}
+
+// emailFormat formats an email with the regex variable
+func (uv *userValidator) emailFormat(user *User) error {
+	if user.Email == "" {
+		return nil
+	}
+	if !uv.emailRegex.MatchString(user.Email) {
+		return ErrEmailInvalid
+	}
+	return nil
+}
+
+// emailIsAvail checks if an email has been taken
+func (uv *userValidator) emailIsAvail(user *User) error {
+	existing, err := uv.ByEmail(user.Email)
+	if err == ErrNotFound {
+		// Email address is available
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+
+	// * We found a user with this email address...
+	// * If the found user has the same ID as this user, it is an update & this is the same user
+	if user.ID != existing.ID {
+		return ErrEmailTaken
+	}
+	return nil
+
 }
 
 var _ UserDB = &userGorm{}
