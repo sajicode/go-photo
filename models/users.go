@@ -25,7 +25,7 @@ var (
 
 	// ErrInvalidPassword is returned when an invalid password
 	// is used when attempting to authenticate a user.
-	ErrInvalidPassword = errors.New("models: incorrect password provided")
+	ErrPasswordIncorrect = errors.New("models: incorrect password provided")
 
 	// ErrEmailRequired is returned when an email address is
 	// not provided when creating a user
@@ -38,6 +38,14 @@ var (
 	// ErrEmailTaken is returned when an update or create is attempted
 	// with an email address that is already in use.
 	ErrEmailTaken = errors.New("models: email address is already taken")
+
+	// ErrPasswordRequired is returned when a create is attempted
+	// without a user password provided.
+	ErrPasswordRequired = errors.New("models: password is required")
+
+	// ErrPasswordTooShort is returned when an update or create is
+	// attempted with a user password that is less than 8 characters.
+	ErrPasswordTooShort = errors.New("models: password must be at least 8 characters long")
 )
 
 const userPwPepper = "secret-random-string"
@@ -139,7 +147,7 @@ func (us *userService) Authenticate(email, password string) (*User, error) {
 	if err != nil {
 		switch err {
 		case bcrypt.ErrMismatchedHashAndPassword:
-			return nil, ErrInvalidPassword
+			return nil, ErrPasswordIncorrect
 		default:
 			return nil, err
 		}
@@ -208,7 +216,10 @@ func (uv *userValidator) Create(user *User) error {
 	// todo the order of function calls matter especially setRemember before hmacRemember. Read & understand Adams
 	err := runUserValFuncs(
 		user,
+		uv.passwordRequired,
+		uv.passwordMinLength,
 		uv.bcryptPassword,
+		uv.passwordHashRequired,
 		uv.setRememberIfUnset,
 		uv.hmacRemember,
 		uv.normalizeEmail,
@@ -225,7 +236,9 @@ func (uv *userValidator) Create(user *User) error {
 func (uv *userValidator) Update(user *User) error {
 	err := runUserValFuncs(
 		user,
+		uv.passwordMinLength,
 		uv.bcryptPassword,
+		uv.passwordHashRequired,
 		uv.hmacRemember,
 		uv.normalizeEmail,
 		uv.requireEmail,
@@ -340,7 +353,33 @@ func (uv *userValidator) emailIsAvail(user *User) error {
 		return ErrEmailTaken
 	}
 	return nil
+}
 
+// passwordMinLength checks the length of the entered password
+func (uv *userValidator) passwordMinLength(user *User) error {
+	if user.Password == "" {
+		return nil
+	}
+	if len(user.Password) < 8 {
+		return ErrPasswordTooShort
+	}
+	return nil
+}
+
+// passwordRequired ensures password is entered
+func (uv *userValidator) passwordRequired(user *User) error {
+	if user.Password == "" {
+		return ErrPasswordRequired
+	}
+	return nil
+}
+
+// passwordHashRequired checks for a password hash
+func (uv *userValidator) passwordHashRequired(user *User) error {
+	if user.PasswordHash == "" {
+		return ErrPasswordRequired
+	}
+	return nil
 }
 
 var _ UserDB = &userGorm{}
