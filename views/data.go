@@ -26,3 +26,24 @@ type Data struct {
 	Alert *Alert // * by using a pointer, Alert can be nil
 	Yield interface{}
 }
+
+// SetAlert function responsoble for setting alerts
+func (d *Data) SetAlert(err error) {
+	if pErr, ok := err.(PublicError); ok {
+		d.Alert = &Alert{
+			Level:   AlertLvlError,
+			Message: pErr.Public(),
+		}
+	} else {
+		d.Alert = &Alert{
+			Level:   AlertLvlError,
+			Message: AlertMsgGeneric,
+		}
+	}
+}
+
+// PublicError interface for showing errors to users
+type PublicError interface {
+	error
+	Public() string
+}
