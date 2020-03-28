@@ -1,7 +1,10 @@
 package views
 
 import (
+	"bytes"
+	"fmt"
 	"html/template"
+	"io"
 	"net/http"
 	"path/filepath"
 )
@@ -37,13 +40,11 @@ type View struct {
 
 // ServeHTTP function
 func (v *View) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if err := v.Render(w, nil); err != nil {
-		panic(err)
-	}
+	v.Render(w, nil)
 }
 
 // Render function helps with rendering view with pre-defined layout
-func (v *View) Render(w http.ResponseWriter, data interface{}) error {
+func (v *View) Render(w http.ResponseWriter, data interface{}) {
 	w.Header().Set("Content-Type", "text/html")
 	switch data.(type) {
 	case Data:
@@ -53,7 +54,12 @@ func (v *View) Render(w http.ResponseWriter, data interface{}) error {
 			Yield: data,
 		}
 	}
-	return v.Template.ExecuteTemplate(w, v.Layout, data)
+	var buf bytes.Buffer
+	if err := v.Template.ExecuteTemplate(&buf, v.Layout, data); err != nil {
+		fmt.Println(w, "Something went wrong. If the problem persists, please sund us an email", http.StatusInternalServerError)
+		return
+	}
+	io.Copy(w, &buf)
 }
 
 // returns a slice of strings repping files within layout direction
