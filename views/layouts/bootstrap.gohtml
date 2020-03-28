@@ -10,7 +10,10 @@
     <div class="container-fluid">
       <!-- Our content will come in here dynamically-->
       <!-- pass all data passed into template down to yield-->
-      {{template "yield" .}}
+      {{if .Alert}}
+        {{template "alert" .Alert}}
+      {{end}}
+      {{template "yield" .Yield}}
 
       {{template "footer"}}
     </div>
