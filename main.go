@@ -22,12 +22,11 @@ func main() {
 	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", host, port, user, password, dbname)
 	services, err := models.NewServices(dbDriver, psqlInfo)
 	must(err)
-	// TODO: fix this
-	// defer us.Close()
+	defer services.Close()
 	//! to clear db
-	// us.DestructiveReset()
+	// services.DestructiveReset()
 
-	// us.AutoMigrate()
+	services.AutoMigrate()
 
 	staticC := controllers.NewStatic()
 	usersC := controllers.NewUsers(services.User)
