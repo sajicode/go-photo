@@ -4,29 +4,65 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 
+	"github.com/gorilla/mux"
 	"github.com/sajicode/go-photo/context"
 	"github.com/sajicode/go-photo/models"
 	"github.com/sajicode/go-photo/views"
 )
 
+const (
+	// ShowGallery named route
+	ShowGallery = "show_gallery"
+)
+
 // NewGalleries is used to create a new gallery controller. should only be used at setup
-func NewGalleries(gs models.GalleryService) *Galleries {
+func NewGalleries(gs models.GalleryService, r *mux.Router) *Galleries {
 	return &Galleries{
-		New: views.NewView("bootstrap", "galleries/new"),
-		gs:  gs,
+		New:      views.NewView("bootstrap", "galleries/new"),
+		ShowView: views.NewView("bootstrap", "galleries/show"),
+		gs:       gs,
+		r:        r,
 	}
 }
 
 // Galleries struct
 type Galleries struct {
-	New *views.View
-	gs  models.GalleryService
+	New      *views.View
+	ShowView *views.View
+	gs       models.GalleryService
+	r        *mux.Router
 }
 
 // GalleryForm struct
 type GalleryForm struct {
 	Title string `schema:"title"`
+}
+
+// Show a single image from a gallery
+// GET /galleries/:id
+func (g *Galleries) Show(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	idStr := vars["id"]
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, "Invalid gallery ID", http.StatusNotFound)
+	}
+	gallery, err := g.gs.ByID(uint(id))
+	if err != nil {
+		switch err {
+		case models.ErrNotFound:
+			http.Error(w, "Gallery not found", http.StatusFound)
+			return
+		default:
+			http.Error(w, "Whoops! Something went wrong", http.StatusInternalServerError)
+		}
+		return
+	}
+	var vd views.Data
+	vd.Yield = gallery
+	g.ShowView.Render(w, vd)
 }
 
 // Create a new gallery
@@ -44,7 +80,6 @@ func (g *Galleries) Create(w http.ResponseWriter, r *http.Request) {
 	if user == nil {
 		http.Redirect(w, r, "/login", http.StatusFound)
 	}
-	fmt.Println("Create got the user:", user)
 	gallery := models.Gallery{
 		Title:  form.Title,
 		UserID: user.ID,
@@ -55,6 +90,12 @@ func (g *Galleries) Create(w http.ResponseWriter, r *http.Request) {
 		g.New.Render(w, vd)
 		return
 	}
+	// go to gallery page after creating gallery
+	url, err := g.r.Get(ShowGallery).URL("id", fmt.Sprintf("%v", gallery.ID))
 
-	fmt.Fprintln(w, gallery)
+	if err != nil {
+		http.Redirect(w, r, "/", http.StatusFound)
+		return
+	}
+	http.Redirect(w, r, url.Path, http.StatusFound)
 }
