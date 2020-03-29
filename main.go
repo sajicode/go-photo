@@ -6,6 +6,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/sajicode/go-photo/controllers"
+	"github.com/sajicode/go-photo/middleware"
 	"github.com/sajicode/go-photo/models"
 )
 
@@ -32,6 +33,11 @@ func main() {
 	usersC := controllers.NewUsers(services.User)
 	galleriesC := controllers.NewGalleries(services.Gallery)
 
+	// user middleware
+	requireUserMw := middleware.RequireUser{
+		UserService: services.User,
+	}
+
 	r := mux.NewRouter()
 	r.NotFoundHandler = http.HandlerFunc(notFound)
 	r.Handle("/", staticC.Home).Methods("GET")
@@ -47,8 +53,8 @@ func main() {
 	r.HandleFunc("/faq", faq).Methods("GET")
 
 	// Gallery routes
-	r.Handle("/galleries/new", galleriesC.New).Methods("GET")
-	r.HandleFunc("/galleries", galleriesC.Create).Methods("POST")
+	r.Handle("/galleries/new", requireUserMw.Apply(galleriesC.New)).Methods("GET")
+	r.HandleFunc("/galleries", requireUserMw.ApplyFn(galleriesC.Create)).Methods("POST")
 
 	fmt.Println("Starting Server on PORT 4500")
 	http.ListenAndServe(":4500", r)
