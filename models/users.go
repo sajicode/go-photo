@@ -74,16 +74,13 @@ type UserService interface {
 }
 
 // NewUserService handles DB connection
-func NewUserService(dbDriver, connectionInfo string) (UserService, error) {
-	ug, err := newUserGorm(dbDriver, connectionInfo)
-	if err != nil {
-		return nil, err
-	}
+func NewUserService(db *gorm.DB) UserService {
+	ug := &userGorm{db}
 	hmac := hash.NewHMAC(hmacSecretKey)
 	uv := newUserValidator(ug, hmac)
 	return &userService{
 		UserDB: uv,
-	}, nil
+	}
 }
 
 var _ UserService = &userService{}
@@ -375,17 +372,6 @@ func (uv *userValidator) rememberMinBytes(user *User) error {
 }
 
 var _ UserDB = &userGorm{}
-
-func newUserGorm(dbDriver, connectionInfo string) (*userGorm, error) {
-	db, err := gorm.Open(dbDriver, connectionInfo)
-	if err != nil {
-		return nil, err
-	}
-	db.LogMode(true)
-	return &userGorm{
-		db: db,
-	}, nil
-}
 
 type userGorm struct {
 	db *gorm.DB
