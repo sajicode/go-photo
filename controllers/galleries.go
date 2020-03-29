@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/sajicode/go-photo/context"
 	"github.com/sajicode/go-photo/models"
 	"github.com/sajicode/go-photo/views"
 )
@@ -39,10 +40,17 @@ func (g *Galleries) Create(w http.ResponseWriter, r *http.Request) {
 		g.New.Render(w, vd)
 		return
 	}
+	user := context.User(r.Context())
+	if user == nil {
+		http.Redirect(w, r, "/login", http.StatusFound)
+	}
+	fmt.Println("Create got the user:", user)
 	gallery := models.Gallery{
-		Title: form.Title,
+		Title:  form.Title,
+		UserID: user.ID,
 	}
 	if err := g.gs.Create(&gallery); err != nil {
+		log.Println(err)
 		vd.SetAlert(err)
 		g.New.Render(w, vd)
 		return
