@@ -33,10 +33,13 @@ func main() {
 	staticC := controllers.NewStatic()
 	usersC := controllers.NewUsers(services.User)
 	galleriesC := controllers.NewGalleries(services.Gallery, r)
+	userMw := middleware.User{
+		UserService: services.User,
+	}
 
 	// user middleware
 	requireUserMw := middleware.RequireUser{
-		UserService: services.User,
+		User: userMw,
 	}
 
 	r.NotFoundHandler = http.HandlerFunc(notFound)
@@ -63,7 +66,8 @@ func main() {
 	r.HandleFunc("/galleries/{id:[0-9]+}", galleriesC.Show).Methods("GET").Name(controllers.ShowGallery)
 
 	fmt.Println("Starting Server on PORT 4500")
-	http.ListenAndServe(":4500", r)
+	// apply middleware on all routes
+	http.ListenAndServe(":4500", userMw.Apply(r))
 }
 
 func faq(w http.ResponseWriter, r *http.Request) {

@@ -7,6 +7,8 @@ import (
 	"io"
 	"net/http"
 	"path/filepath"
+
+	"github.com/sajicode/go-photo/context"
 )
 
 var (
@@ -40,22 +42,26 @@ type View struct {
 
 // ServeHTTP function
 func (v *View) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	v.Render(w, nil)
+	v.Render(w, r, nil)
 }
 
 // Render function helps with rendering view with pre-defined layout
-func (v *View) Render(w http.ResponseWriter, data interface{}) {
+func (v *View) Render(w http.ResponseWriter, r *http.Request, data interface{}) {
 	w.Header().Set("Content-Type", "text/html")
-	switch data.(type) {
+	var vd Data
+	switch d := data.(type) {
 	case Data:
+		vd = d
 		// do nothing
 	default:
-		data = Data{
+		vd = Data{
 			Yield: data,
 		}
 	}
+	// set user from context on view data
+	vd.User = context.User(r.Context())
 	var buf bytes.Buffer
-	if err := v.Template.ExecuteTemplate(&buf, v.Layout, data); err != nil {
+	if err := v.Template.ExecuteTemplate(&buf, v.Layout, vd); err != nil {
 		fmt.Println(w, "Something went wrong. If the problem persists, please sund us an email", http.StatusInternalServerError)
 		return
 	}

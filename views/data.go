@@ -1,5 +1,7 @@
 package views
 
+import "github.com/sajicode/go-photo/models"
+
 const (
 	// AlertLvlError danger messages
 	AlertLvlError = "danger"
@@ -24,6 +26,7 @@ type Alert struct {
 // Data struct encompasses bootstrap alert and extra info
 type Data struct {
 	Alert *Alert // * by using a pointer, Alert can be nil
+	User  *models.User
 	Yield interface{}
 }
 
