@@ -19,6 +19,7 @@ type GalleryDB interface {
 	ByID(id uint) (*Gallery, error)
 	Create(gallery *Gallery) error
 	Update(gallery *Gallery) error
+	Delete(id uint) error
 }
 
 // NewGalleryService tells the db to create a new gallery
@@ -71,6 +72,15 @@ func (gv *galleryValidator) Update(gallery *Gallery) error {
 	return gv.GalleryDB.Update(gallery)
 }
 
+// Delete will delete the user with the provided ID
+
+func (gv *galleryValidator) Delete(id uint) error {
+	if id <= 0 {
+		return ErrInvalidID
+	}
+	return gv.GalleryDB.Delete(id)
+}
+
 // userIDRequired makes sure a userid is available while creating a gallery
 func (gv *galleryValidator) userIDRequired(g *Gallery) error {
 	if g.UserID <= 0 {
@@ -101,6 +111,12 @@ func (gg *galleryGorm) Create(gallery *Gallery) error {
 // Update func updates a gallery in the database
 func (gg *galleryGorm) Update(gallery *Gallery) error {
 	return gg.db.Save(gallery).Error
+}
+
+// Delete will delete the gallery with the provided ID
+func (gg *galleryGorm) Delete(id uint) error {
+	gallery := Gallery{Model: gorm.Model{ID: id}}
+	return gg.db.Delete(&gallery).Error
 }
 
 // ByID gets a gallery by its ID
