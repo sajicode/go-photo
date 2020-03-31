@@ -55,6 +55,11 @@ func main() {
 
 	r.HandleFunc("/faq", faq).Methods("GET")
 
+	// Image routes
+	// * so far a route has an image prefix, run the accompanying function
+	imageHandler := http.FileServer(http.Dir("./images/"))
+	r.PathPrefix("/images/").Handler(http.StripPrefix("/images/", imageHandler))
+
 	// * named routes are useful for when we want to redirect to a particular route after an action
 	// Gallery routes
 	r.Handle("/galleries", requireUserMw.ApplyFn(galleriesC.Index)).Methods("GET")

@@ -62,7 +62,8 @@ func (v *View) Render(w http.ResponseWriter, r *http.Request, data interface{}) 
 	vd.User = context.User(r.Context())
 	var buf bytes.Buffer
 	if err := v.Template.ExecuteTemplate(&buf, v.Layout, vd); err != nil {
-		fmt.Println(w, "Something went wrong. If the problem persists, please sund us an email", http.StatusInternalServerError)
+		fmt.Println(err)
+		fmt.Fprintln(w, "Something went wrong. If the problem persists, please send us an email", http.StatusInternalServerError)
 		return
 	}
 	io.Copy(w, &buf)
