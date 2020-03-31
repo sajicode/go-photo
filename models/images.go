@@ -5,12 +5,30 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // ImageService interface describes methods present on this service
 type ImageService interface {
 	Create(galleryID uint, r io.Reader, filename string) error
-	ByGalleryID(galleryID uint) ([]string, error)
+	ByGalleryID(galleryID uint) ([]Image, error)
+	Delete(i *Image) error
+}
+
+// Image is not stored in the database
+type Image struct {
+	GalleryID uint
+	Filename  string
+}
+
+// Path returns an image path as a string
+func (i *Image) Path() string {
+	return "/" + i.RelativePath()
+}
+
+// RelativePath returns a path to delete an image
+func (i *Image) RelativePath() string {
+	return fmt.Sprintf("images/galleries/%v/%v", i.GalleryID, i.Filename)
 }
 
 // NewImageService function ?
@@ -41,16 +59,22 @@ func (is *imageService) Create(galleryID uint, r io.Reader, filename string) err
 }
 
 // ByGalleryID fetches images linked to a gallery
-func (is *imageService) ByGalleryID(galleryID uint) ([]string, error) {
+func (is *imageService) ByGalleryID(galleryID uint) ([]Image, error) {
 	path := is.imagePath(galleryID)
-	strings, err := filepath.Glob(path + "*")
+	imgStrings, err := filepath.Glob(path + "*")
 	if err != nil {
 		return nil, err
 	}
-	for i := range strings {
-		strings[i] = "/" + strings[i]
+	ret := make([]Image, len(imgStrings))
+	for i := range imgStrings {
+		imgStrings[i] = strings.Replace(imgStrings[i], path, "", 1)
+		ret[i] = Image{
+			Filename:  imgStrings[i],
+			GalleryID: galleryID,
+		}
+
 	}
-	return strings, nil
+	return ret, nil
 }
 
 func (is *imageService) imagePath(galleryID uint) string {
@@ -64,4 +88,9 @@ func (is *imageService) mkImagePath(galleryID uint) (string, error) {
 		return "", err
 	}
 	return galleryPath, nil
+}
+
+// Delete removes an image from the filesystem
+func (is *imageService) Delete(i *Image) error {
+	return os.Remove(i.RelativePath())
 }

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"strconv"
 
 	"github.com/gorilla/mux"
@@ -14,15 +13,15 @@ import (
 )
 
 const (
-	// ShowGallery named route
+	// ShowGallery for named route
 	ShowGallery = "show_gallery"
-	// EditGallery named route
+	// EditGallery for named route
 	EditGallery = "edit_gallery"
 
 	maxMultipartMem = 1 << 20 // 1 megabyte
 )
 
-// NewGalleries is used to create a new gallery controller. should only be used at setup
+// NewGalleries contains all the requirements for a new gallery
 func NewGalleries(gs models.GalleryService, is models.ImageService, r *mux.Router) *Galleries {
 	return &Galleries{
 		New:       views.NewView("bootstrap", "galleries/new"),
@@ -46,18 +45,18 @@ type Galleries struct {
 	r         *mux.Router
 }
 
-// GalleryForm struct
+// GalleryForm input form
 type GalleryForm struct {
 	Title string `schema:"title"`
 }
 
-// Index shows all the galleries a user has access to
+// Index displays all galleries created by a user
 // GET /galleries
 func (g *Galleries) Index(w http.ResponseWriter, r *http.Request) {
 	user := context.User(r.Context())
 	galleries, err := g.gs.ByUserID(user.ID)
 	if err != nil {
-		http.Error(w, "Something went wrong!", http.StatusInternalServerError)
+		http.Error(w, "Something went wrong.", http.StatusInternalServerError)
 		return
 	}
 	var vd views.Data
@@ -65,7 +64,7 @@ func (g *Galleries) Index(w http.ResponseWriter, r *http.Request) {
 	g.IndexView.Render(w, r, vd)
 }
 
-// Show a single image from a gallery
+// Show displays a gallery
 // GET /galleries/:id
 func (g *Galleries) Show(w http.ResponseWriter, r *http.Request) {
 	gallery, err := g.galleryByID(w, r)
@@ -77,7 +76,7 @@ func (g *Galleries) Show(w http.ResponseWriter, r *http.Request) {
 	g.ShowView.Render(w, r, vd)
 }
 
-// Edit show current info of gallery on form edit field
+// Edit displays the gallery edit page with existing data
 // GET /galleries/:id/edit
 func (g *Galleries) Edit(w http.ResponseWriter, r *http.Request) {
 	gallery, err := g.galleryByID(w, r)
@@ -94,7 +93,7 @@ func (g *Galleries) Edit(w http.ResponseWriter, r *http.Request) {
 	g.EditView.Render(w, r, vd)
 }
 
-// Update a gallery title
+// Update for updating a gallery
 // POST /galleries/:id/update
 func (g *Galleries) Update(w http.ResponseWriter, r *http.Request) {
 	gallery, err := g.galleryByID(w, r)
@@ -124,12 +123,12 @@ func (g *Galleries) Update(w http.ResponseWriter, r *http.Request) {
 	}
 	vd.Alert = &views.Alert{
 		Level:   views.AlertLvlSuccess,
-		Message: "Gallery updated successfully",
+		Message: "Gallery successfully updated!",
 	}
 	g.EditView.Render(w, r, vd)
 }
 
-// Create a new gallery
+// Create intiates gallery creation
 // POST /galleries
 func (g *Galleries) Create(w http.ResponseWriter, r *http.Request) {
 	var vd views.Data
@@ -143,20 +142,18 @@ func (g *Galleries) Create(w http.ResponseWriter, r *http.Request) {
 	user := context.User(r.Context())
 	if user == nil {
 		http.Redirect(w, r, "/login", http.StatusFound)
+		return
 	}
 	gallery := models.Gallery{
 		Title:  form.Title,
 		UserID: user.ID,
 	}
 	if err := g.gs.Create(&gallery); err != nil {
-		log.Println(err)
 		vd.SetAlert(err)
 		g.New.Render(w, r, vd)
 		return
 	}
-	// go to edit gallery page after creating gallery
 	url, err := g.r.Get(EditGallery).URL("id", fmt.Sprintf("%v", gallery.ID))
-
 	if err != nil {
 		http.Redirect(w, r, "/", http.StatusFound)
 		return
@@ -164,7 +161,7 @@ func (g *Galleries) Create(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, url.Path, http.StatusFound)
 }
 
-// ImageUpload - Upload an image to a gallery
+// ImageUpload uploads an image
 // POST /galleries/:id/images
 func (g *Galleries) ImageUpload(w http.ResponseWriter, r *http.Request) {
 	gallery, err := g.galleryByID(w, r)
@@ -176,20 +173,9 @@ func (g *Galleries) ImageUpload(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Gallery not found", http.StatusNotFound)
 		return
 	}
-
-	// TODO parse a multipart form
 	var vd views.Data
 	vd.Yield = gallery
 	err = r.ParseMultipartForm(maxMultipartMem)
-	if err != nil {
-		vd.SetAlert(err)
-		g.EditView.Render(w, r, vd)
-		return
-	}
-
-	// Create the directory to contain our images
-	galleryPath := fmt.Sprintf("images/galleries/%v/", gallery.ID)
-	err = os.MkdirAll(galleryPath, 0755)
 	if err != nil {
 		vd.SetAlert(err)
 		g.EditView.Render(w, r, vd)
@@ -221,6 +207,39 @@ func (g *Galleries) ImageUpload(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, url.Path, http.StatusFound)
 }
 
+// ImageDelete deletes an image from a gallery
+// POST /galleries/:id/images/:filename/delete
+func (g *Galleries) ImageDelete(w http.ResponseWriter, r *http.Request) {
+	gallery, err := g.galleryByID(w, r)
+	if err != nil {
+		return
+	}
+	user := context.User(r.Context())
+	if gallery.UserID != user.ID {
+		http.Error(w, "Gallery not found", http.StatusNotFound)
+		return
+	}
+	filename := mux.Vars(r)["filename"]
+	i := models.Image{
+		Filename:  filename,
+		GalleryID: gallery.ID,
+	}
+	err = g.is.Delete(&i)
+	if err != nil {
+		var vd views.Data
+		vd.Yield = gallery
+		vd.SetAlert(err)
+		g.EditView.Render(w, r, vd)
+		return
+	}
+	url, err := g.r.Get(EditGallery).URL("id", fmt.Sprintf("%v", gallery.ID))
+	if err != nil {
+		http.Redirect(w, r, "/galleries", http.StatusFound)
+		return
+	}
+	http.Redirect(w, r, url.Path, http.StatusFound)
+}
+
 // Delete a gallery
 // POST /galleries/:id/delete
 func (g *Galleries) Delete(w http.ResponseWriter, r *http.Request) {
@@ -239,6 +258,7 @@ func (g *Galleries) Delete(w http.ResponseWriter, r *http.Request) {
 		vd.SetAlert(err)
 		vd.Yield = gallery
 		g.EditView.Render(w, r, vd)
+		return
 	}
 	http.Redirect(w, r, "/galleries", http.StatusFound)
 }
@@ -255,10 +275,9 @@ func (g *Galleries) galleryByID(w http.ResponseWriter, r *http.Request) (*models
 	if err != nil {
 		switch err {
 		case models.ErrNotFound:
-			http.Error(w, "Gallery not found", http.StatusFound)
-			return nil, err
+			http.Error(w, "Gallery not found", http.StatusNotFound)
 		default:
-			http.Error(w, "Whoops! Something went wrong", http.StatusInternalServerError)
+			http.Error(w, "Whoops! Something went wrong.", http.StatusInternalServerError)
 		}
 		return nil, err
 	}

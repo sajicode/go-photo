@@ -1,6 +1,10 @@
 package views
 
-import "github.com/sajicode/go-photo/models"
+import (
+	"log"
+
+	"github.com/sajicode/go-photo/models"
+)
 
 const (
 	// AlertLvlError danger messages
@@ -38,6 +42,7 @@ func (d *Data) SetAlert(err error) {
 			Message: pErr.Public(),
 		}
 	} else {
+		log.Println(err)
 		d.Alert = &Alert{
 			Level:   AlertLvlError,
 			Message: AlertMsgGeneric,
