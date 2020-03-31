@@ -62,3 +62,6 @@ go-photo
 
 # environment variables
 .env
+
+# uploaded images
+images/**
