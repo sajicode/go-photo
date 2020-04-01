@@ -66,6 +66,11 @@ func (v *View) Render(w http.ResponseWriter, r *http.Request, data interface{}) 
 			Yield: data,
 		}
 	}
+	if alert := getAlert(r); alert != nil {
+		vd.Alert = alert
+		clearAlert(w)
+	}
+
 	// set user from context on view data
 	vd.User = context.User(r.Context())
 	var buf bytes.Buffer

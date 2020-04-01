@@ -66,7 +66,13 @@ func (u *Users) Create(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		http.Redirect(w, r, "/login", http.StatusFound)
-		return
+
+		alert := views.Alert{
+			Level:   views.AlertLvlSuccess,
+			Message: "Shutters!",
+		}
+		views.RedirectAlert(w, r, "/galleries", http.StatusFound, alert)
+
 	}
 	http.Redirect(w, r, "/galleries", http.StatusFound)
 }
