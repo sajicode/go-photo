@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
 	"github.com/sajicode/go-photo/controllers"
 	"github.com/sajicode/go-photo/middleware"
 	"github.com/sajicode/go-photo/models"
+	"github.com/sajicode/go-photo/rand"
 )
 
 const (
@@ -33,6 +35,14 @@ func main() {
 	staticC := controllers.NewStatic()
 	usersC := controllers.NewUsers(services.User)
 	galleriesC := controllers.NewGalleries(services.Gallery, services.Image, r)
+
+	// TODO Update this to be a config variable
+	isProd := false
+	b, err := rand.Bytes(32)
+	if err != nil {
+		must(err)
+	}
+	csrfMw := csrf.Protect((b), csrf.Secure(isProd))
 	userMw := middleware.User{
 		UserService: services.User,
 	}
@@ -80,7 +90,7 @@ func main() {
 
 	fmt.Println("Starting Server on PORT 4500")
 	// apply middleware on all routes
-	http.ListenAndServe(":4500", userMw.Apply(r))
+	http.ListenAndServe(":4500", csrfMw(userMw.Apply(r)))
 }
 
 func faq(w http.ResponseWriter, r *http.Request) {
