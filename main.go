@@ -2,27 +2,38 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
+	"os"
 
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
+	"github.com/joho/godotenv"
 	"github.com/sajicode/go-photo/controllers"
 	"github.com/sajicode/go-photo/middleware"
 	"github.com/sajicode/go-photo/models"
 	"github.com/sajicode/go-photo/rand"
 )
 
-const (
-	host     = "localhost"
-	port     = 5432
-	user     = "postgres"
-	password = "kamikaze"
-	dbname   = "gophotos_dev"
-	dbDriver = "postgres"
-)
+func init() {
+	// loads values from .env into the system
+	if err := godotenv.Load(); err != nil {
+		log.Print(err)
+	}
+}
 
 func main() {
-	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", host, port, user, password, dbname)
+
+	// Get environment variables
+	host := os.Getenv("DB_HOST")
+	port := os.Getenv("DB_PORT")
+	user := os.Getenv("DB_USER")
+	password := os.Getenv("DB_PASSWORD")
+	dbname := os.Getenv("DB_NAME")
+	dbDriver := os.Getenv("DB_DRIVER")
+
+	psqlInfo := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", host, port, user, password, dbname)
+
 	services, err := models.NewServices(dbDriver, psqlInfo)
 	must(err)
 	defer services.Close()
@@ -36,8 +47,12 @@ func main() {
 	usersC := controllers.NewUsers(services.User)
 	galleriesC := controllers.NewGalleries(services.Gallery, services.Image, r)
 
-	// TODO Update this to be a config variable
-	isProd := false
+	var isProd bool
+	if os.Getenv("APP_ENV") != "production" {
+		isProd = false
+	} else {
+		isProd = true
+	}
 	b, err := rand.Bytes(32)
 	if err != nil {
 		must(err)
@@ -88,9 +103,10 @@ func main() {
 	r.HandleFunc("/galleries/{id:[0-9]+}/images/{filename}/delete", requireUserMw.ApplyFn(galleriesC.ImageDelete)).Methods("POST")
 	r.HandleFunc("/galleries/{id:[0-9]+}", galleriesC.Show).Methods("GET").Name(controllers.ShowGallery)
 
-	fmt.Println("Starting Server on PORT 4500")
+	appPort := fmt.Sprintf(":%s", os.Getenv("APP_PORT"))
+	fmt.Println("Starting Server on PORT " + appPort)
 	// apply middleware on all routes
-	http.ListenAndServe(":4500", csrfMw(userMw.Apply(r)))
+	http.ListenAndServe(appPort, csrfMw(userMw.Apply(r)))
 }
 
 func faq(w http.ResponseWriter, r *http.Request) {

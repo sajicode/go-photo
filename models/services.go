@@ -1,6 +1,12 @@
 package models
 
-import "github.com/jinzhu/gorm"
+import (
+	"os"
+
+	"github.com/jinzhu/gorm"
+	// we want to keep the postgres dialect even though we are not using it directly
+	_ "github.com/jinzhu/gorm/dialects/postgres"
+)
 
 // NewServices func is responsible for making a connection to the database
 func NewServices(dbDriver, connectionInfo string) (*Services, error) {
@@ -8,7 +14,13 @@ func NewServices(dbDriver, connectionInfo string) (*Services, error) {
 	if err != nil {
 		return nil, err
 	}
-	db.LogMode(true)
+	var logDB bool
+	if os.Getenv("APP_ENV") == "production" {
+		logDB = false
+	} else {
+		logDB = true
+	}
+	db.LogMode(logDB)
 	return &Services{
 		User:    NewUserService(db),
 		Gallery: NewGalleryService(db),

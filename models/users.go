@@ -1,6 +1,7 @@
 package models
 
 import (
+	"os"
 	"regexp"
 	"strings"
 
@@ -8,13 +9,10 @@ import (
 	"github.com/sajicode/go-photo/hash"
 	"github.com/sajicode/go-photo/rand"
 	"golang.org/x/crypto/bcrypt"
-
-	// we want to keep the postgres dialect even though we are not using it directly
-	_ "github.com/jinzhu/gorm/dialects/postgres"
 )
 
-const userPwPepper = "secret-random-string"
-const hmacSecretKey = "secret-hmac-key"
+var userPwPepper = os.Getenv("USER_PASSWORD_PEPPER")
+var hmacSecretKey = os.Getenv("HMAC_SECRET_KEY")
 
 // User represents the user model stored in our database
 // This is used for user accounts, storing both an email
