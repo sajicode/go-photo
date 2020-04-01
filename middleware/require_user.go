@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/sajicode/go-photo/context"
 	"github.com/sajicode/go-photo/models"
@@ -20,6 +21,13 @@ func (u *User) Apply(next http.Handler) http.HandlerFunc {
 // ApplyFn middleware to controller
 func (u *User) ApplyFn(next http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		path := r.URL.Path
+		// If the user is requesting a static asset or images, we skip looking for the current user
+		if strings.HasPrefix(path, "/assets/") || strings.HasPrefix(path, "/images/") {
+			next(w, r)
+			return
+		}
 		cookie, err := r.Cookie("remember_token")
 		if err != nil {
 			next(w, r)
