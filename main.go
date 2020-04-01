@@ -55,6 +55,11 @@ func main() {
 
 	r.HandleFunc("/faq", faq).Methods("GET")
 
+	// Assets
+	assetHandler := http.FileServer(http.Dir("./assets/"))
+	assetHandler = http.StripPrefix("/assets/", assetHandler)
+	r.PathPrefix("/assets/").Handler(assetHandler)
+
 	// Image routes
 	// * so far a route has an image prefix, run the accompanying function
 	imageHandler := http.FileServer(http.Dir("./images/"))
