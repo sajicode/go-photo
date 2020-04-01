@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
+	"github.com/sajicode/go-photo/context"
 	"github.com/sajicode/go-photo/models"
 	"github.com/sajicode/go-photo/rand"
 	"github.com/sajicode/go-photo/views"
@@ -130,6 +132,27 @@ func (u *Users) signIn(w http.ResponseWriter, user *models.User) error {
 	}
 	http.SetCookie(w, &cookie)
 	return nil
+}
+
+// Logout is used to delete a users session cookie (remember_token)
+// and then will update the user resource with a new remmeber
+// token.
+//
+// POST /logout
+func (u *Users) Logout(w http.ResponseWriter, r *http.Request) {
+	cookie := http.Cookie{
+		Name:     "remember_token",
+		Value:    "",
+		Expires:  time.Now(),
+		HttpOnly: true, //! remove when connecting to client apps
+	}
+	http.SetCookie(w, &cookie)
+
+	user := context.User(r.Context())
+	token, _ := rand.RememberToken()
+	user.Remember = token
+	u.us.Update(user)
+	http.Redirect(w, r, "/", http.StatusFound)
 }
 
 // CookieTest is used to display cookies set on a current user
