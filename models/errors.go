@@ -48,6 +48,9 @@ const (
 
 	// ErrUserIDRequired is returned when a user ID is not passed in for gallery creation
 	ErrUserIDRequired privateError = "models: user ID is required"
+
+	// ErrTokenInvalid const for invalid token errors
+	ErrTokenInvalid modelError = "models: token provided is not valid"
 )
 
 type modelError string
