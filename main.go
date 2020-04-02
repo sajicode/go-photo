@@ -10,6 +10,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 	"github.com/sajicode/go-photo/controllers"
+	"github.com/sajicode/go-photo/email"
 	"github.com/sajicode/go-photo/middleware"
 	"github.com/sajicode/go-photo/models"
 	"github.com/sajicode/go-photo/rand"
@@ -31,6 +32,9 @@ func main() {
 	password := os.Getenv("DB_PASSWORD")
 	dbname := os.Getenv("DB_NAME")
 	dbDriver := os.Getenv("DB_DRIVER")
+	mgDomain := os.Getenv("MG_DOMAIN")
+	mgAPIKey := os.Getenv("MG_API_KEY")
+	mgPublicKey := os.Getenv("MG_PUBLIC_KEY")
 
 	psqlInfo := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", host, port, user, password, dbname)
 
@@ -42,9 +46,18 @@ func main() {
 
 	services.AutoMigrate()
 
+	// use emailer
+	emailer := email.NewClient(
+		email.WithSender("Shutters Support", "support@shutters.co"),
+		email.WithMailgun(mgDomain, mgAPIKey, mgPublicKey),
+	)
+
+	// mock usage to prevent errors
+	// _ = emailer
+
 	r := mux.NewRouter()
 	staticC := controllers.NewStatic()
-	usersC := controllers.NewUsers(services.User)
+	usersC := controllers.NewUsers(services.User, *emailer)
 	galleriesC := controllers.NewGalleries(services.Gallery, services.Image, r)
 
 	var isProd bool

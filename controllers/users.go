@@ -7,17 +7,19 @@ import (
 	"time"
 
 	"github.com/sajicode/go-photo/context"
+	"github.com/sajicode/go-photo/email"
 	"github.com/sajicode/go-photo/models"
 	"github.com/sajicode/go-photo/rand"
 	"github.com/sajicode/go-photo/views"
 )
 
 // NewUsers is used to create a new user controller. should only be used at setup
-func NewUsers(us models.UserService) *Users {
+func NewUsers(us models.UserService, emailer email.Client) *Users {
 	return &Users{
 		NewView:   views.NewView("bootstrap", "users/new"),
 		LoginView: views.NewView("bootstrap", "users/login"),
 		us:        us,
+		emailer:   emailer,
 	}
 }
 
@@ -26,6 +28,7 @@ type Users struct {
 	NewView   *views.View
 	LoginView *views.View
 	us        models.UserService
+	emailer   email.Client
 }
 
 // SignupForm struct
@@ -62,7 +65,12 @@ func (u *Users) Create(w http.ResponseWriter, r *http.Request) {
 		u.NewView.Render(w, r, vd)
 		return
 	}
-	err := u.signIn(w, &user)
+	err := u.emailer.Welcome(user.Name, user.Email)
+
+	if err != nil {
+		log.Println(err)
+	}
+	err = u.signIn(w, &user)
 
 	if err != nil {
 		http.Redirect(w, r, "/login", http.StatusFound)
